@@ -1,10 +1,10 @@
 {
-    "name": "lavary/laravel-menu",
+    "name": "codetay/laravel-menu",
     "description": "A quick way to create menus in Laravel 5",
     "keywords": [
         "laravel"
     ],
-    "homepage": "https://github.com/lavary/laravel-menu",
+    "homepage": "https://github.com/codetay/laravel-menu",
     "authors": [
         {
             "name": "Lavary",
