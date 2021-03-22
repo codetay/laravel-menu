@@ -718,8 +718,8 @@ class Builder
 
                 // Check if children has one active item, then set active parent class
                 if ($item->link->isActive) {
-                    $children_attributes['class'] .= ' '.$this->conf['active_parent_class'];
-                } else {
+                    $children_attributes['class'] = isset($children_attributes['class']) ? $children_attributes['class'] . ' ' . $this->conf['active_parent_class'] : $this->conf['active_parent_class'];
+                } elseif (isset($children_attributes['class'])) {
                     $children_attributes['class'] = str_replace($this->conf['active_parent_class'], '', $children_attributes['class']);
                 }
 
