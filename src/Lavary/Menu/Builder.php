@@ -56,9 +56,127 @@ class Builder
     }
 
     /**
+     * Build an Parent HTML attribute string from an array.
+     *
+     * @param array $attributes
+     *
+     * @return string
+     */
+    public static function parentAttributes($attributes)
+    {
+        $html = [];
+
+        ray($attributes);
+
+        foreach ((array)$attributes as $key => $value) {
+            $element = self::attributeElement($key, $value);
+            if (!is_null($element)) {
+                $html[] = $element;
+            }
+        }
+
+        return count($html) > 0 ? ' ' . implode(' ', $html) : '';
+    }
+
+    /**
+     * Build a single attribute element.
+     *
+     * @param string $key
+     * @param string $value
+     *
+     * @return string
+     */
+    protected static function attributeElement($key, $value)
+    {
+        if (is_numeric($key)) {
+            $key = $value;
+        }
+        if (!is_null($value)) {
+            return $key . '="' . e($value) . '"';
+        }
+
+        return null;
+    }
+
+    /**
+     * Merge item's attributes with a static string of attributes.
+     *
+     * @param null $new
+     * @param array $old
+     *
+     * @return string
+     */
+    public static function mergeStatic($new = null, array $old = [])
+    {
+        // Parses the string into an associative array
+        parse_str(preg_replace('/\s*([\w-]+)\s*=\s*"([^"]+)"/', '$1=$2&', $new), $attrs);
+
+        // Merge classes
+        $attrs['class'] = self::formatGroupClass($attrs, $old);
+
+        // Merging new and old array and parse it as a string
+        return self::attributes(array_merge(Arr::except($old, array('class')), $attrs));
+    }
+
+    /**
+     * Get the valid attributes from the options.
+     *
+     * @param array $new
+     * @param array $old
+     *
+     * @return string
+     */
+    public static function formatGroupClass($new, $old)
+    {
+        if (isset($new['class']) and $new['class'] !== null) {
+            $classes = trim(trim(Arr::get($old, 'class')) . ' ' . trim(Arr::get($new, 'class')));
+
+            return implode(' ', array_unique(explode(' ', $classes)));
+        }
+
+        return Arr::get($old, 'class');
+    }
+
+    /**
+     * Build an HTML attribute string from an array.
+     *
+     * @param array $attributes
+     *
+     * @return string
+     */
+    public static function attributes($attributes)
+    {
+        $html = [];
+
+        foreach ((array)$attributes as $key => $value) {
+            $element = self::attributeElement($key, $value);
+            if (!is_null($element)) {
+                $html[] = $element;
+            }
+        }
+
+        return count($html) > 0 ? ' ' . implode(' ', $html) : '';
+    }
+
+    /**
+     * Add raw content.
+     *
+     * @param $title
+     * @param array $options
+     *
+     * @return Item
+     */
+    public function raw($title, array $options = [])
+    {
+        $options['raw'] = true;
+
+        return $this->add($title, $options);
+    }
+
+    /**
      * Adds an item to the menu.
      *
-     * @param string       $title
+     * @param string $title
      * @param string|array $options
      *
      * @return Item $item
@@ -84,21 +202,6 @@ class Builder
         // Issue #170: Use more_entropy otherwise usleep(1) is called.
         // Issue #197: The ID was not a viable document element ID value due to the period.
         return str_replace('.', '', uniqid('id-', true));
-    }
-
-    /**
-     * Add raw content.
-     *
-     * @param $title
-     * @param array $options
-     *
-     * @return Item
-     */
-    public function raw($title, array $options = [])
-    {
-        $options['raw'] = true;
-
-        return $this->add($title, $options);
     }
 
     /**
@@ -164,16 +267,6 @@ class Builder
     }
 
     /**
-     * Returns the first item marked as active.
-     *
-     * @return Item|null
-     */
-    public function active()
-    {
-        return $this->whereActive(true)->first();
-    }
-
-    /**
      * Insert a separator after the item.
      *
      * @param array $attributes
@@ -188,7 +281,7 @@ class Builder
     /**
      * Create a menu group with shared attributes.
      *
-     * @param array    $attributes
+     * @param array $attributes
      * @param callable $closure
      */
     public function group($attributes, $closure)
@@ -257,55 +350,10 @@ class Builder
     public static function formatGroupPrefix($new, $old)
     {
         if (isset($new['prefix'])) {
-            return trim(Arr::get($old, 'prefix'), '/').'/'.trim($new['prefix'], '/');
+            return trim(Arr::get($old, 'prefix'), '/') . '/' . trim($new['prefix'], '/');
         }
 
         return Arr::get($old, 'prefix');
-    }
-
-    /**
-     * Get the prefix from the last group on the stack.
-     *
-     * @return string
-     */
-    public function getLastGroupPrefix()
-    {
-        if (count($this->groupStack) > 0) {
-            return Arr::get(last($this->groupStack), 'prefix', '');
-        }
-
-        return null;
-    }
-
-    /**
-     * Prefix the given URI with the last prefix.
-     *
-     * @param string $uri
-     *
-     * @return string
-     */
-    protected function prefix($uri)
-    {
-        return trim(trim($this->getLastGroupPrefix(), '/').'/'.trim($uri, '/'), '/') ?: '/';
-    }
-
-    /**
-     * Get the valid attributes from the options.
-     *
-     * @param array $new
-     * @param array $old
-     *
-     * @return string
-     */
-    public static function formatGroupClass($new, $old)
-    {
-        if (isset($new['class']) and $new['class'] !== null) {
-            $classes = trim(trim(Arr::get($old, 'class')).' '.trim(Arr::get($new, 'class')));
-
-            return implode(' ', array_unique(explode(' ', $classes)));
-        }
-
-        return Arr::get($old, 'class');
     }
 
     /**
@@ -377,14 +425,14 @@ class Builder
                 return $url[0];
             }
 
-            return URL::to($prefix.'/'.$url[0], array_slice($url, 1), $secure);
+            return URL::to($prefix . '/' . $url[0], array_slice($url, 1), $secure);
         }
 
         if (self::isAbs($url)) {
             return $url;
         }
 
-        return URL::to($prefix.'/'.$url, [], $secure);
+        return URL::to($prefix . '/' . $url, [], $secure);
     }
 
     /**
@@ -429,16 +477,6 @@ class Builder
         }
 
         return URL::action($options);
-    }
-
-    /**
-     * Returns items with no parent.
-     *
-     * @return \Illuminate\Support\Collection
-     */
-    public function roots()
-    {
-        return $this->whereParent();
     }
 
     /**
@@ -497,6 +535,16 @@ class Builder
     }
 
     /**
+     * Returns a new builder of just the top level menu items.
+     *
+     * @return Builder
+     */
+    public function topMenu()
+    {
+        return $this->spawn('topLevel', $this->roots());
+    }
+
+    /**
      * Creates a new Builder instance with the given name and collection.
      *
      * @param $name
@@ -523,13 +571,13 @@ class Builder
     }
 
     /**
-     * Returns a new builder of just the top level menu items.
+     * Returns items with no parent.
      *
-     * @return Builder
+     * @return \Illuminate\Support\Collection
      */
-    public function topMenu()
+    public function roots()
     {
-        return $this->spawn('topLevel', $this->roots());
+        return $this->whereParent();
     }
 
     /**
@@ -547,6 +595,16 @@ class Builder
         }
 
         return $nb;
+    }
+
+    /**
+     * Returns the first item marked as active.
+     *
+     * @return Item|null
+     */
+    public function active()
+    {
+        return $this->whereActive(true)->first();
     }
 
     /**
@@ -598,14 +656,30 @@ class Builder
     }
 
     /**
+     * Returns the menu as an unordered list.
+     *
+     * @param array $attributes
+     * @param array $children_attributes
+     * @param array $item_attributes
+     * @param callable $item_after_calback
+     * @param array $item_after_calback_params
+     *
+     * @return string
+     */
+    public function asUl($attributes = [], $children_attributes = [], $item_attributes = [], $item_after_calback = null, $item_after_calback_params = [])
+    {
+        return '<ul' . self::attributes($attributes) . '>' . $this->render('ul', null, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params) . '</ul>';
+    }
+
+    /**
      * Generate the menu items as list items using a recursive function.
      *
-     * @param string   $type
-     * @param int      $parent
-     * @param array    $children_attributes
-     * @param array    $item_attributes
+     * @param string $type
+     * @param int $parent
+     * @param array $children_attributes
+     * @param array $item_attributes
      * @param callable $item_after_calback
-     * @param array    $item_after_calback_params
+     * @param array $item_after_calback_params
      *
      * @return string
      */
@@ -628,20 +702,26 @@ class Builder
                     ]);
                 }
             }
-            $all_attributes = array_merge($item_attributes, $item->attr()) ;
+            $all_attributes = array_merge($item_attributes, $item->attr());
             if (isset($item_attributes['class'])) {
-                $all_attributes['class'] = $all_attributes['class'].' '.$item_attributes['class'] ;
+                $all_attributes['class'] = $all_attributes['class'] . ' ' . $item_attributes['class'];
             }
-            $items .= '<'.$item_tag.self::attributes($all_attributes).'>';
+            $items .= '<' . $item_tag . self::attributes($all_attributes) . '>';
 
             if ($item->link) {
-                $items .= $item->beforeHTML.'<a'.self::attributes($link_attr).(!empty($item->url()) ? ' href="'.$item->url().'"' : '').'>'.$item->title.'</a>'.$item->afterHTML;
+                $items .= $item->beforeHTML . '<a' . self::attributes($link_attr) . (!empty($item->url()) ? ' href="' . $item->url() . '"' : '') . '>' . $item->title . '</a>' . $item->afterHTML;
             } else {
                 $items .= $item->title;
             }
 
             if ($item->hasChildren()) {
-                $items .= '<'.$type.self::attributes($children_attributes).'>';
+
+                // Check if children has one active item, then set active parent class
+                if ($item->link->isActive) {
+                    $children_attributes['class'] .= ' '.$this->conf['active_parent_class'];
+                }
+
+                $items .= '<' . $type . self::attributes($children_attributes) . '>';
                 // Recursive call to children.
                 $items .= $this->render($type, $item->id, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params);
                 $items .= "</{$type}>";
@@ -650,7 +730,7 @@ class Builder
             $items .= "</{$item_tag}>";
 
             if ($item->divider) {
-                $items .= '<'.$item_tag.self::attributes($item->divider).'></'.$item_tag.'>';
+                $items .= '<' . $item_tag . self::attributes($item->divider) . '></' . $item_tag . '>';
             }
         }
 
@@ -658,99 +738,42 @@ class Builder
     }
 
     /**
-     * Returns the menu as an unordered list.
-     *
-     * @param array    $attributes
-     * @param array    $children_attributes
-     * @param array    $item_attributes
-     * @param callable $item_after_calback
-     * @param array    $item_after_calback_params
-     *
-     * @return string
-     */
-    public function asUl($attributes = [], $children_attributes = [], $item_attributes = [], $item_after_calback = null, $item_after_calback_params = [])
-    {
-        return '<ul'.self::attributes($attributes).'>'.$this->render('ul', null, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params).'</ul>';
-    }
-
-    /**
      * Returns the menu as an ordered list.
      *
-     * @param array    $attributes
-     * @param array    $children_attributes
-     * @param array    $item_attributes
+     * @param array $attributes
+     * @param array $children_attributes
+     * @param array $item_attributes
      * @param callable $item_after_calback
-     * @param array    $item_after_calback_params
+     * @param array $item_after_calback_params
      *
      * @return string
      */
     public function asOl($attributes = [], $children_attributes = [], $item_attributes = [], $item_after_calback = null, $item_after_calback_params = [])
     {
-        return '<ol'.self::attributes($attributes).'>'.$this->render('ol', null, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params).'</ol>';
+        return '<ol' . self::attributes($attributes) . '>' . $this->render('ol', null, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params) . '</ol>';
     }
 
     /**
      * Returns the menu as div containers.
      *
-     * @param array    $attributes
-     * @param array    $children_attributes
-     * @param array    $item_attributes
+     * @param array $attributes
+     * @param array $children_attributes
+     * @param array $item_attributes
      * @param callable $item_after_calback
-     * @param array    $item_after_calback_params
+     * @param array $item_after_calback_params
      *
      * @return string
      */
     public function asDiv($attributes = [], $children_attributes = [], $item_attributes = [], $item_after_calback = null, $item_after_calback_params = [])
     {
-        return '<div'.self::attributes($attributes).'>'.$this->render('div', null, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params).'</div>';
-    }
-
-    /**
-     * Build an HTML attribute string from an array.
-     *
-     * @param array $attributes
-     *
-     * @return string
-     */
-    public static function attributes($attributes)
-    {
-        $html = [];
-
-        foreach ((array) $attributes as $key => $value) {
-            $element = self::attributeElement($key, $value);
-            if (!is_null($element)) {
-                $html[] = $element;
-            }
-        }
-
-        return count($html) > 0 ? ' '.implode(' ', $html) : '';
-    }
-
-    /**
-     * Build a single attribute element.
-     *
-     * @param string $key
-     * @param string $value
-     *
-     * @return string
-     */
-    protected static function attributeElement($key, $value)
-    {
-        if (is_numeric($key)) {
-            $key = $value;
-        }
-        if (!is_null($value)) {
-            return $key.'="'.e($value).'"';
-        }
-
-        return null;
+        return '<div' . self::attributes($attributes) . '>' . $this->render('div', null, $children_attributes, $item_attributes, $item_after_calback, $item_after_calback_params) . '</div>';
     }
 
     /**
      * Return configuration value by key.
      *
      * @param string $key
-     * @param null   $default
+     * @param null $default
      *
      * @return string
      */
@@ -759,14 +782,14 @@ class Builder
         return $this->conf[$key] ?? $default;
     }
 
-     /**
+    /**
      * Add custom options
      * One-time special additions can be made to the options to be applied to the menu.
      *
-      * @param array       $options
-      * @param string|null $optionsFrom (optional, if you want to use the options of another
-      *                                 menu instead of "default" options, enter another menu name.)
-      * @return void
+     * @param array $options
+     * @param string|null $optionsFrom (optional, if you want to use the options of another
+     *                                 menu instead of "default" options, enter another menu name.)
+     * @return void
      */
     public function options(array $options, ?string $optionsFrom = 'default')
     {
@@ -789,61 +812,10 @@ class Builder
     }
 
     /**
-     * Merge item's attributes with a static string of attributes.
-     *
-     * @param null  $new
-     * @param array $old
-     *
-     * @return string
-     */
-    public static function mergeStatic($new = null, array $old = [])
-    {
-        // Parses the string into an associative array
-        parse_str(preg_replace('/\s*([\w-]+)\s*=\s*"([^"]+)"/', '$1=$2&', $new), $attrs);
-
-        // Merge classes
-        $attrs['class'] = self::formatGroupClass($attrs, $old);
-
-        // Merging new and old array and parse it as a string
-        return self::attributes(array_merge(Arr::except($old, array('class')), $attrs));
-    }
-
-    /**
-     * Filter items recursively.
-     *
-     * @param string $attribute
-     * @param mixed  $value
-     *
-     * @return Collection
-     */
-    public function filterRecursive($attribute, $value)
-    {
-        $collection = new Collection();
-
-        // Iterate over all the items in the main collection
-        $this->items->each(function ($item) use ($attribute, $value, &$collection) {
-            if (!$this->hasProperty($attribute)) {
-                return false;
-            }
-
-            if ($item->$attribute == $value) {
-                $collection->push($item);
-
-                // Check if item has any children
-                if ($item->hasChildren()) {
-                    $collection = $collection->merge($this->filterRecursive($attribute, $item->id));
-                }
-            }
-        });
-
-        return $collection;
-    }
-
-    /**
      * Search the menu based on an attribute.
      *
      * @param string $method
-     * @param array  $args
+     * @param array $args
      *
      * @return bool|Builder|Collection
      */
@@ -878,6 +850,37 @@ class Builder
     }
 
     /**
+     * Filter items recursively.
+     *
+     * @param string $attribute
+     * @param mixed $value
+     *
+     * @return Collection
+     */
+    public function filterRecursive($attribute, $value)
+    {
+        $collection = new Collection();
+
+        // Iterate over all the items in the main collection
+        $this->items->each(function ($item) use ($attribute, $value, &$collection) {
+            if (!$this->hasProperty($attribute)) {
+                return false;
+            }
+
+            if ($item->$attribute == $value) {
+                $collection->push($item);
+
+                // Check if item has any children
+                if ($item->hasChildren()) {
+                    $collection = $collection->merge($this->filterRecursive($attribute, $item->id));
+                }
+            }
+        });
+
+        return $collection;
+    }
+
+    /**
      * Returns menu item by name.
      *
      * @return Item
@@ -889,5 +892,31 @@ class Builder
         }
 
         return $this->whereNickname($prop)->first();
+    }
+
+    /**
+     * Prefix the given URI with the last prefix.
+     *
+     * @param string $uri
+     *
+     * @return string
+     */
+    protected function prefix($uri)
+    {
+        return trim(trim($this->getLastGroupPrefix(), '/') . '/' . trim($uri, '/'), '/') ?: '/';
+    }
+
+    /**
+     * Get the prefix from the last group on the stack.
+     *
+     * @return string
+     */
+    public function getLastGroupPrefix()
+    {
+        if (count($this->groupStack) > 0) {
+            return Arr::get(last($this->groupStack), 'prefix', '');
+        }
+
+        return null;
     }
 }
