@@ -432,7 +432,9 @@ class Builder
             return $url;
         }
 
-        return URL::to($prefix . '/' . $url, [], $secure);
+        if ($url) {
+            return URL::to($prefix . '/' . $url, [], $secure);
+        }
     }
 
     /**
@@ -709,7 +711,11 @@ class Builder
             $items .= '<' . $item_tag . self::attributes($all_attributes) . '>';
 
             if ($item->link) {
-                $items .= $item->beforeHTML . '<a' . self::attributes($link_attr) . (!empty($item->url()) ? ' href="' . $item->url() . '"' : '') . '>' . $item->title . '</a>' . $item->afterHTML;
+                if (!empty($item->url())) {
+                    $items .= $item->beforeHTML . '<a' . self::attributes($link_attr) . ' href="' . $item->url() . '">' . $item->title . '</a>' . $item->afterHTML;
+                } else {
+                    $items .= '<div' . self::attributes($link_attr). '>' . $item->title . '</div>';
+                }
             } else {
                 $items .= $item->title;
             }
